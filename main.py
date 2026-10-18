@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -5,6 +6,7 @@ import jwt
 from jwt import InvalidTokenError
 
 app = FastAPI(title="TDS GA2 OIDC Token Verification Service")
+logger = logging.getLogger("uvicorn.error")
 
 ISSUER = "https://idp.exam.local"
 AUDIENCE = "tds-e7812x53.apps.exam.local"
@@ -40,7 +42,9 @@ async def verify_token(payload: VerifyRequest):
             "sub": claims.get("sub", ""),
             "aud": claims.get("aud", ""),
         }
-    except (InvalidTokenError, TypeError, ValueError, KeyError):
+    except (InvalidTokenError, TypeError, ValueError, KeyError) as exc:
+        # Diagnostic only: logs the rejection reason, never the token itself.
+        logger.warning("JWT verification failed: %s: %s", type(exc).__name__, exc)
         return JSONResponse(status_code=401, content={"valid": False})
 
 @app.get("/healthz")
